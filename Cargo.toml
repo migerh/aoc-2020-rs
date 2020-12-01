@@ -12,6 +12,7 @@ opt-level = 3      # controls the `--opt-level` the compiler builds with.
                    # 's' attempts to reduce size, 'z' reduces size even more.
 
 [dependencies]
+itertools = "0.9.0"
 regex = "1"
 lazy_static = "1.4.0"
 num = "0.3.1"
