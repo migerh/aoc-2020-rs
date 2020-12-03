@@ -1,6 +1,6 @@
 use super::utils::ParseError;
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq)]
 enum Floor {
     Tree,
     Free,
@@ -31,8 +31,8 @@ fn get_floor_at_position<'a>((index, line): (usize, &'a Vec<Floor>), slope: &'a(
 }
 
 fn is_tree(floor: &Option<&Floor>) -> bool {
-    if let Some(&f) = floor {
-        f == Floor::Tree
+    if let Some(f) = floor {
+        f == &&Floor::Tree
     } else {
         false
     }
