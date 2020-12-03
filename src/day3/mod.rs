@@ -1,5 +1,6 @@
 use super::utils::ParseError;
 
+#[derive(PartialEq, Debug, Clone, Copy)]
 enum Floor {
     Tree,
     Free,
@@ -18,24 +19,32 @@ fn parse_input() -> Vec<Vec<Floor>> {
     input
         .lines()
         .filter(|v| *v != "")
-        .map(|v| parse_line(v))
+        .map(parse_line)
         .collect::<Vec<_>>()
 }
 
-fn count_trees_on_path(map: &Vec<Vec<Floor>>, slope: &(usize, usize)) -> u64 {
-    let mut coords = (0, 0);
-    let mut number_of_trees = 0;
-    while coords.1 < map.len() - 1 {
-        coords.0 = (coords.0 + slope.0) % map[0].len();
-        coords.1 += slope.1;
+fn get_floor_at_position<'a>((index, line): (usize, &'a Vec<Floor>), slope: &'a(usize, usize)) -> Option<&'a Floor> {
+    line.iter()
+        .cycle()
+        .skip(index * slope.0 / slope.1)
+        .next()
+}
 
-        number_of_trees += match map[coords.1][coords.0] {
-            Floor::Tree => 1,
-            Floor::Free => 0,
-        };
+fn is_tree(floor: &Option<&Floor>) -> bool {
+    if let Some(&f) = floor {
+        f == Floor::Tree
+    } else {
+        false
     }
+}
 
-    number_of_trees
+fn count_trees_on_path(map: &Vec<Vec<Floor>>, slope: &(usize, usize)) -> u64 {
+    map.iter()
+        .enumerate()
+        .step_by(slope.1)
+        .map(|v| get_floor_at_position(v, slope))
+        .filter(|t| is_tree(t))
+        .count() as u64
 }
 
 pub fn problem1() -> Result<u64, ParseError> {
