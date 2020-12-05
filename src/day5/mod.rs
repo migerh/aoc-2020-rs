@@ -1,8 +1,6 @@
-use std::collections::HashSet;
 use itertools::Itertools;
 use super::utils::ParseError;
 
-#[derive(Debug)]
 enum Direction {
     Up,
     Down,
@@ -92,17 +90,4 @@ pub fn problem2() -> Result<usize, ParseError> {
     println!("5/2: My seat id: {}", my_seat);
 
     Ok(*my_seat)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
