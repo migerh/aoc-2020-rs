@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::collections::HashSet;
 use regex::Regex;
 use super::utils::ParseError;
@@ -74,10 +73,6 @@ pub fn problem1() -> Result<(), ParseError> {
     println!("7/1: # of colors of bags that can contain at least one 'shiny gold': {}", result);
 
     Ok(())
-}
-
-fn build_tree<'a>(_rules: &Vec<(&'a str, Vec<(usize, &'a str)>)>) -> HashMap<&'a str, (usize, &'a str)> {
-    HashMap::new()
 }
 
 fn count_bags(bag: &str, rules: &Vec<(&str, Vec<(usize, &str)>)>) -> Result<usize, ParseError> {
