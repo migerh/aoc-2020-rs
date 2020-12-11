@@ -39,8 +39,8 @@ fn generate_world(input: Vec<Vec<char>>) -> World {
 fn count_occupied_neighbors(map: &World, coords: &Coords) -> usize {
     let mut count = 0;
 
-    for i in -1..2 {
-        for j in -1..2 {
+    for i in -1..=1 {
+        for j in -1..=1 {
             if i == 0 && j == 0 {
                 continue;
             }
@@ -92,7 +92,7 @@ fn print_world(world: &World, size: &Coords) {
     println!("");
 }
 
-pub fn run<F>(neighbor_count_strategy: &F, neighbor_threshold: usize) -> Result<(), ParseError>
+pub fn run<F>(neighbor_count_strategy: &F, neighbor_threshold: usize) -> Result<usize, ParseError>
     where F: Fn(&World, &Coords) -> usize {
 
     let input = parse_input();
@@ -114,13 +114,14 @@ pub fn run<F>(neighbor_count_strategy: &F, neighbor_threshold: usize) -> Result<
         last_count = occupied;
     }
 
-    println!("11/1: # of occupied seats: {}", count_occupied_seats(&old_world));
-
-    Ok(())
+    Ok(count_occupied_seats(&old_world))
 }
 
 pub fn problem1() -> Result<(), ParseError> {
-    run(&count_occupied_neighbors, 4)
+    let result = run(&count_occupied_neighbors, 4)?;
+
+    println!("11/1: # of occupied seats: {}", result);
+    Ok(())
 }
 
 fn trace_occupation(map: &World, coords: &Coords, direction: &Coords) -> bool {
@@ -145,8 +146,8 @@ fn trace_occupation(map: &World, coords: &Coords, direction: &Coords) -> bool {
 fn count_occupied_neighbors_2(world: &World, coords: &Coords) -> usize {
     let mut count = 0;
 
-    for i in -1..2 {
-        for j in -1..2 {
+    for i in -1..=1 {
+        for j in -1..=1 {
             if i == 0 && j == 0 {
                 continue;
             }
@@ -161,5 +162,8 @@ fn count_occupied_neighbors_2(world: &World, coords: &Coords) -> usize {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    run(&count_occupied_neighbors_2, 5)
+    let result = run(&count_occupied_neighbors_2, 5)?;
+
+    println!("11/2: # of occupied seats: {}", result);
+    Ok(())
 }
