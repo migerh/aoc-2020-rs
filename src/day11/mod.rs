@@ -56,15 +56,17 @@ fn count_occupied_neighbors(map: &World, coords: &Coords) -> usize {
     count
 }
 
-fn tick(map: World) -> World {
+fn tick<F>(map: World, neighbor_count_strategy: F, neighbor_threshold: usize) -> World
+    where F: Fn(&World, &Coords) -> usize {
+
     let mut new_world = HashMap::new();
 
     for (coords, status) in &map {
-        let occupied_neighbors = count_occupied_neighbors(&map, &coords);
+        let occupied_neighbors = neighbor_count_strategy(&map, &coords);
 
         if status == &'L' && occupied_neighbors == 0 {
             new_world.entry(*coords).or_insert('#');
-        } else if status == &'#' && occupied_neighbors >= 4 {
+        } else if status == &'#' && occupied_neighbors >= neighbor_threshold {
             new_world.entry(*coords).or_insert('L');
         } else {
             new_world.entry(*coords).or_insert(*status);
@@ -90,7 +92,9 @@ fn print_world(world: &World, size: &Coords) {
     println!("");
 }
 
-pub fn problem1() -> Result<(), ParseError> {
+pub fn run<F>(neighbor_count_strategy: &F, neighbor_threshold: usize) -> Result<(), ParseError>
+    where F: Fn(&World, &Coords) -> usize {
+
     let input = parse_input();
     let size = map_size(&input)?;
     let mut old_world = generate_world(input);
@@ -99,7 +103,7 @@ pub fn problem1() -> Result<(), ParseError> {
 
     let mut last_count = 0;
     loop {
-        let new_world = tick(old_world.clone());
+        let new_world = tick(old_world.clone(), neighbor_count_strategy, neighbor_threshold);
         // print_world(&new_world, &size);
 
         let occupied = count_occupied_seats(&new_world);
@@ -115,21 +119,47 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
-pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input();
-
-    Ok(())
+pub fn problem1() -> Result<(), ParseError> {
+    run(&count_occupied_neighbors, 4)
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+fn trace_occupation(map: &World, coords: &Coords, direction: &Coords) -> bool {
+    let mut coords = (coords.0 + direction.0, coords.1 + direction.1);
 
-    #[test]
-    pub fn example_1_1() {
+    while let Some(status) = map.get(&coords) {
+        if status == &'#' {
+            return true;
+        }
+
+        if status == &'L' {
+            return false;
+        }
+
+        coords.0 += direction.0;
+        coords.1 += direction.1;
     }
 
-    #[test]
-    pub fn example_2_1() {
+    false
+}
+
+fn count_occupied_neighbors_2(world: &World, coords: &Coords) -> usize {
+    let mut count = 0;
+
+    for i in -1..2 {
+        for j in -1..2 {
+            if i == 0 && j == 0 {
+                continue;
+            }
+
+            if trace_occupation(world, coords, &(i, j)) {
+                count += 1;
+            }
+        }
     }
+
+    count
+}
+
+pub fn problem2() -> Result<(), ParseError> {
+    run(&count_occupied_neighbors_2, 5)
 }
