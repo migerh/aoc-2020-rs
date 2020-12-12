@@ -3,12 +3,12 @@ use regex::Regex;
 use super::utils::ParseError;
 
 #[derive(Debug)]
-struct NavigationUpdate {
+struct Command {
     direction: char,
     distance: i32,
 }
 
-impl FromStr for NavigationUpdate {
+impl FromStr for Command {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -20,7 +20,7 @@ impl FromStr for NavigationUpdate {
         let direction = cap[1].chars().next().ok_or(ParseError::new(&format!("Unable to parse input: '{}'", s)))?;
         let distance = cap[2].parse::<i32>()?;
 
-        Ok(Self { direction, distance })
+        Ok(Command { direction, distance })
     }
 }
 
@@ -60,26 +60,25 @@ impl Position {
 struct Navigation {
     position: Position,
     waypoint: Position,
-    direction: char,
 }
 
 impl Navigation {
-    fn waypoint(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
+    fn waypoint(&mut self, update: &Command) -> Result<(), ParseError> {
         let delta = Position::delta(update.direction, update.distance)?;
 
         self.waypoint = self.waypoint.travel(&delta);
         Ok(())
     }
 
-    fn movement(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
-        let delta = Position::new(update.distance * self.waypoint.x, update.distance * self.waypoint.y);
+    fn movement(&mut self, waypoint: &Position, update: &Command) -> Result<(), ParseError> {
+        let delta = Position::new(update.distance * waypoint.x, update.distance * waypoint.y);
         let new_position = self.position.travel(&delta);
 
         self.position = new_position;
         Ok(())
     }
 
-    fn rotation(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
+    fn rotation(&mut self, update: &Command) -> Result<(), ParseError> {
         let x = self.waypoint.x;
         let y = self. waypoint.y;
 
@@ -100,23 +99,39 @@ impl Navigation {
         Ok(())
     }
 
-    pub fn init() -> Self {
+    fn waypoint_from_direction(direction: char) -> Result<Position, ParseError> {
+        let (x, y) = match direction {
+            'N' => (0, 1),
+            'E' => (1, 0),
+            'S' => (0, -1),
+            'W' => (-1, 0),
+            _ => Err(ParseError::new("Invalid direction"))?,
+        };
+
+        Ok(Position::new(x, y))
+    }
+
+    pub fn init(waypoint: Position) -> Self {
         Navigation {
-            direction: 'E',
             position: Position::new(0, 0),
-            waypoint: Position::new(10, 1)
+            waypoint,
         }
     }
 
-    pub fn travel(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
+    pub fn travel(&mut self, update: &Command, part2: bool) -> Result<(), ParseError> {
         let waypoint = vec!['N', 'S', 'E', 'W'];
         let movement = vec!['F'];
         let rotation = vec!['L', 'R'];
 
         if waypoint.contains(&update.direction) {
-            self.waypoint(update)
+            if part2 {
+                self.waypoint(update)
+            } else {
+                let wp = Self::waypoint_from_direction(update.direction)?;
+                self.movement(&wp, update)
+            }
         } else if movement.contains(&update.direction) {
-            self.movement(update)
+            self.movement(&self.waypoint.clone(), update)
         } else if rotation.contains(&update.direction) {
             self.rotation(update)
         } else {
@@ -125,29 +140,41 @@ impl Navigation {
     }
 }
 
-fn parse_input() -> Result<Vec<NavigationUpdate>, ParseError> {
+fn parse_input() -> Result<Vec<Command>, ParseError> {
     let input = include_str!("./data/input.txt");
     input
         .lines()
         .filter(|v| *v != "")
-        .map(|v| NavigationUpdate::from_str(v))
+        .map(|v| Command::from_str(v))
         .collect::<Result<Vec<_>, ParseError>>()
 }
 
 pub fn problem1() -> Result<(), ParseError> {
     let input = parse_input()?;
+    let waypoint = Position::new(1, 0);
 
-    let mut ship = Navigation::init();
+    let mut ship = Navigation::init(waypoint);
 
     for update in input {
-        ship.travel(&update)?;
+        ship.travel(&update, false)?;
     }
 
-    println!("12/2: manhattan distance: {}", ship.position.manhattan());
+    println!("12/1: manhattan distance: {}", ship.position.manhattan());
 
     Ok(())
 }
 
 pub fn problem2() -> Result<(), ParseError> {
+    let input = parse_input()?;
+    let waypoint = Position::new(10, 1);
+
+    let mut ship = Navigation::init(waypoint);
+
+    for update in input {
+        ship.travel(&update, true)?;
+    }
+
+    println!("12/2: manhattan distance: {}", ship.position.manhattan());
+
     Ok(())
 }

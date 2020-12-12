@@ -19,7 +19,7 @@ mod day11;
 mod day12;
 mod utils;
 
-fn run() -> Result<(), utils::Error> {
+fn run() -> Result<(), utils::ParseError> {
   day12::problem1()?;
   day12::problem2()?;
 
