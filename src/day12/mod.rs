@@ -59,17 +59,20 @@ impl Position {
 #[derive(Debug)]
 struct Navigation {
     position: Position,
+    waypoint: Position,
     direction: char,
 }
 
 impl Navigation {
-    fn movement(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
-        let delta = if update.direction == 'F' {
-            Position::delta(self.direction, update.distance)
-        } else {
-            Position::delta(update.direction, update.distance)
-        }?;
+    fn waypoint(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
+        let delta = Position::delta(update.direction, update.distance)?;
 
+        self.waypoint = self.waypoint.travel(&delta);
+        Ok(())
+    }
+
+    fn movement(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
+        let delta = Position::new(update.distance * self.waypoint.x, update.distance * self.waypoint.y);
         let new_position = self.position.travel(&delta);
 
         self.position = new_position;
@@ -77,49 +80,42 @@ impl Navigation {
     }
 
     fn rotation(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
-        let new_direction = match (self.direction, update.direction, update.distance) {
-            ('N', 'L', 90) => 'W',
-            ('N', 'L', 180) => 'S',
-            ('N', 'L', 270) => 'E',
-            ('E', 'L', 90) => 'N',
-            ('E', 'L', 180) => 'W',
-            ('E', 'L', 270) => 'S',
-            ('S', 'L', 90) => 'E',
-            ('S', 'L', 180) => 'N',
-            ('S', 'L', 270) => 'W',
-            ('W', 'L', 90) => 'S',
-            ('W', 'L', 180) => 'E',
-            ('W', 'L', 270) => 'N',
+        let x = self.waypoint.x;
+        let y = self. waypoint.y;
 
-            ('N', 'R', 90) => 'E',
-            ('N', 'R', 180) => 'S',
-            ('N', 'R', 270) => 'W',
-            ('E', 'R', 90) => 'S',
-            ('E', 'R', 180) => 'W',
-            ('E', 'R', 270) => 'N',
-            ('S', 'R', 90) => 'W',
-            ('S', 'R', 180) => 'N',
-            ('S', 'R', 270) => 'E',
-            ('W', 'R', 90) => 'N',
-            ('W', 'R', 180) => 'E',
-            ('W', 'R', 270) => 'S',
+        let waypoint = match (update.direction, update.distance) {
+            ('L', 90) => (-y, x),
+            ('L', 180) => (-x, -y),
+            ('L', 270) => (y, -x),
+
+            ('R', 90) => (y, -x),
+            ('R', 180) => (-x, -y),
+            ('R', 270) => (-y, x),
 
             _ => Err(ParseError::new(&format!("Invalid direction update: '{:?}'", update)))?,
         };
 
-        self.direction = new_direction;
+        self.waypoint = Position::new(waypoint.0, waypoint.1);
+
         Ok(())
     }
 
     pub fn init() -> Self {
-        Navigation { direction: 'E', position: Position::new(0, 0) }
+        Navigation {
+            direction: 'E',
+            position: Position::new(0, 0),
+            waypoint: Position::new(10, 1)
+        }
     }
 
     pub fn travel(&mut self, update: &NavigationUpdate) -> Result<(), ParseError> {
-        let movement = vec!['N', 'S', 'E', 'W', 'F'];
+        let waypoint = vec!['N', 'S', 'E', 'W'];
+        let movement = vec!['F'];
         let rotation = vec!['L', 'R'];
 
-        if movement.contains(&update.direction) {
+        if waypoint.contains(&update.direction) {
+            self.waypoint(update)
+        } else if movement.contains(&update.direction) {
             self.movement(update)
         } else if rotation.contains(&update.direction) {
             self.rotation(update)
@@ -147,13 +143,11 @@ pub fn problem1() -> Result<(), ParseError> {
         ship.travel(&update)?;
     }
 
-    println!("12/1: manhattan distance: {}", ship.position.manhattan());
+    println!("12/2: manhattan distance: {}", ship.position.manhattan());
 
     Ok(())
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input()?;
-
     Ok(())
 }
