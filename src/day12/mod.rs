@@ -233,15 +233,14 @@ pub fn problem1() -> Result<(), ParseError> {
     ];
     let navigator = Navigator { strategies };
     let initial_speed = Position::new(1, 0);
-    let mut ship = Ship::init(initial_speed);
+    let ship = Ship::init(initial_speed);
 
-    let input = parse_input()?;
+    let commands = parse_input()?;
 
-    for command in input {
-        ship = navigator.apply_command(ship, &command)?;
-    }
+    let destination = commands.into_iter()
+        .try_fold(ship, |ship, command| navigator.apply_command(ship, &command))?;
 
-    println!("12/1: manhattan distance: {}", ship.position.manhattan());
+    println!("12/1: manhattan distance: {}", destination.position.manhattan());
 
     Ok(())
 }
@@ -254,15 +253,14 @@ pub fn problem2() -> Result<(), ParseError> {
     ];
     let navigator = Navigator { strategies };
     let initial_speed = Position::new(10, 1);
-    let mut ship = Ship::init(initial_speed);
+    let ship = Ship::init(initial_speed);
 
-    let input = parse_input()?;
+    let commands = parse_input()?;
 
-    for command in input {
-        ship = navigator.apply_command(ship, &command)?;
-    }
+    let destination = commands.into_iter()
+        .try_fold(ship, |ship, command| navigator.apply_command(ship, &command))?;
 
-    println!("12/2: manhattan distance: {}", ship.position.manhattan());
+    println!("12/2: manhattan distance: {}", destination.position.manhattan());
 
     Ok(())
 }
