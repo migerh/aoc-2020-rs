@@ -41,26 +41,31 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
-fn chinese_remainder(start: usize, remainder: &Vec<(usize, usize)>) -> usize {
-    let lb = start;
-    let mut t = lb + (lb % remainder[0].1) + remainder[0].0;
-    let mut inc = remainder[0].1;
+struct Crt {
+    remainder: usize,
+    modulus: usize,
+}
 
+fn chinese_remainder(crts: &Vec<Crt>) -> usize {
     // search the solution with the chinese remainder theorem
     // https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Search_by_sieving
-    for bus in remainder.iter().skip(1) {
+
+    let mut time = crts[0].remainder;
+    let mut increment = crts[0].modulus;
+
+    for crt in crts.iter().skip(1) {
         loop {
-            if t % bus.1 == bus.0 {
+            if time % crt.modulus == crt.remainder {
                 break;
             }
 
-            t += inc;
+            time += increment;
         }
 
-        inc *= bus.1;
+        increment *= crt.modulus;
     }
 
-    t
+    time
 }
 
 pub fn problem2() -> Result<(), ParseError> {
@@ -68,13 +73,62 @@ pub fn problem2() -> Result<(), ParseError> {
 
     let mut busses = terminal.busses.into_iter()
         .enumerate()
+        // Filter each irrelevant bus
         .filter(|(_, b)| b.is_some())
+
+        // The timestamp t we are looking for has to fulfill the equations
+        //
+        //   t + offset_i mod bus_i = 0
+        //
+        // but the CRT is giving us instructions on how to solve
+        //
+        //   t mod bus_i = a_i
+        //
+        // for a_i with
+        //
+        //   0 <= a_i < bus_i
+        //
+        // So we have to get the a_i from our input. This is easy but we have
+        // to consider a few corner cases. In case
+        //
+        //   0 < offset_i < bus_i
+        //
+        // we get
+        //
+        //   a_i = bus_i - offset_i
+        //
+        // We now have to consider two special cases:
+        //
+        //   offset_i = 0
+        //
+        // and
+        //
+        //   offset_i > bus_id
+        //
+        // To eliminate the first one we can apply the modulus operation on the
+        // difference:
+        //
+        //   (bus_i - offset_i) % bus_i
+        //
+        // To eliminate the second issue, we can apply the modulus operation on
+        // the offset directly:
+        //
+        //   (bus_i - offset_i % bus_i)
+        //
+        // Putting everything together we now have:
+        //
+        //   a_i = (bus_i - offset_i % bus_i) % bus_i
+        //
+        // which is exactly how we are calculating the first component of
+        // belows result tuple:
         .map(|(i, b)| ((b.unwrap() - i % b.unwrap()) % b.unwrap(), b.unwrap()))
+        .map(|(remainder, modulus)| Crt { remainder, modulus })
         .collect::<Vec<_>>();
 
-    busses.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    // sort descending by bus id
+    busses.sort_by(|a, b| b.modulus.partial_cmp(&a.modulus).unwrap());
 
-    let result = chinese_remainder(0, &busses);
+    let result = chinese_remainder(&busses);
     println!("13/2: result {}", result);
 
     Ok(())
