@@ -96,7 +96,7 @@ pub fn run<F>(neighbor_count_strategy: &F, neighbor_threshold: usize) -> Result<
     where F: Fn(&World, &Coords) -> usize {
 
     let input = parse_input();
-    let size = map_size(&input)?;
+    let _size = map_size(&input)?;
     let mut old_world = generate_world(input);
 
     // print_world(&old_world, &size);
