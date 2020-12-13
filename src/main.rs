@@ -22,7 +22,7 @@ mod utils;
 
 fn run() -> Result<(), utils::ParseError> {
   day13::problem1()?;
-//   day13::problem2()?;
+  day13::problem2()?;
 
   if false {
     day1::problem1();

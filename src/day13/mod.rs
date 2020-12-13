@@ -41,39 +41,41 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
+fn chinese_remainder(start: usize, remainder: &Vec<(usize, usize)>) -> usize {
+    let lb = start;
+    let mut t = lb + (lb % remainder[0].1) + remainder[0].0;
+    let mut inc = remainder[0].1;
+
+    // search the solution with the chinese remainder theorem
+    // https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Search_by_sieving
+    for bus in remainder.iter().skip(1) {
+        loop {
+            if t % bus.1 == bus.0 {
+                break;
+            }
+
+            t += inc;
+        }
+
+        inc *= bus.1;
+    }
+
+    t
+}
+
 pub fn problem2() -> Result<(), ParseError> {
     let terminal = parse_input()?;
 
     let mut busses = terminal.busses.into_iter()
         .enumerate()
         .filter(|(_, b)| b.is_some())
-        .map(|(i, b)| (i, b.unwrap()))
+        .map(|(i, b)| ((b.unwrap() - i % b.unwrap()) % b.unwrap(), b.unwrap()))
         .collect::<Vec<_>>();
 
     busses.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    let lb = 100000000000000_usize;
-    // let lb = 0_usize;
-    let mut t = lb + (lb % busses[0].1) - busses[0].0;
-
-    'main: loop {
-        let mut done = true;
-        for bus in busses.iter().skip(1) {
-            done &= (t + bus.0) % bus.1 == 0;
-            if !done {
-                t += busses[0].1;
-                continue 'main;
-            }
-        }
-
-        if done {
-            break;
-        }
-
-        t += busses[0].1;
-    }
-
-    println!("result: {}", t);
+    let result = chinese_remainder(0, &busses);
+    println!("13/2: result {}", result);
 
     Ok(())
 }
