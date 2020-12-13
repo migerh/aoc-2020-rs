@@ -30,13 +30,13 @@ impl FromStr for Command {
 }
 
 /// A CommandStrategy is the interface for the actual implementation of each
-/// command or group of commands. There are four command groups:parse_input()
+/// command or group of commands. There are four command groups
 ///
 /// CompassDirectMovement
 /// Implements the NESW commands for part 1 that move the ship directly
 /// without considering the ship's speed.
 ///
-/// CompassWaypointMovement
+/// CompassSpeedAdjustment
 /// Implements the NESW commands for part 2 that modifies the ships speed.
 ///
 /// ForwardMovement
@@ -70,9 +70,9 @@ impl CommandStrategy for CompassDirectMovement {
     }
 }
 
-struct CompassWaypointMovement {}
+struct CompassSpeedAdjustment {}
 
-impl CommandStrategy for CompassWaypointMovement {
+impl CommandStrategy for CompassSpeedAdjustment {
     fn supports_command(&self, command: &Command) -> bool {
         match command.operation {
             'N' | 'E' | 'S' | 'W' => true,
@@ -232,8 +232,8 @@ pub fn problem1() -> Result<(), ParseError> {
         Box::new(Rotation {})
     ];
     let navigator = Navigator { strategies };
-    let initial_waypoint = Position::new(1, 0);
-    let mut ship = Ship::init(initial_waypoint);
+    let initial_speed = Position::new(1, 0);
+    let mut ship = Ship::init(initial_speed);
 
     let input = parse_input()?;
 
@@ -248,13 +248,13 @@ pub fn problem1() -> Result<(), ParseError> {
 
 pub fn problem2() -> Result<(), ParseError> {
     let strategies: Vec<Box<dyn CommandStrategy>> = vec![
-        Box::new(CompassWaypointMovement {}),
+        Box::new(CompassSpeedAdjustment {}),
         Box::new(ForwardMovement {}),
         Box::new(Rotation {})
     ];
     let navigator = Navigator { strategies };
-    let initial_waypoint = Position::new(10, 1);
-    let mut ship = Ship::init(initial_waypoint);
+    let initial_speed = Position::new(10, 1);
+    let mut ship = Ship::init(initial_speed);
 
     let input = parse_input()?;
 
