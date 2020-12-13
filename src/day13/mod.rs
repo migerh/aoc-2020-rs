@@ -1,4 +1,3 @@
-use std::iter;
 use super::utils::ParseError;
 
 #[derive(Debug)]
@@ -43,35 +42,38 @@ pub fn problem1() -> Result<(), ParseError> {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    // hardcoded the problem because Rust iterators are statically typed
-    // and I couldn't find a way to concatenate filters dynamically because
-    // of that.
-    // This takes a lot of time!
-    let initial = iter::repeat(1)
-        .enumerate()
-        .map(|(index, _)| index as usize)
-        .skip(166389351081 * 601 - 60 as usize)
-        .step_by(601)
+    let terminal = parse_input()?;
 
-        // hard wire the problem
-        // .filter(|v| (v + 60) % 601 == 0)
-        .filter(|v| (v + 29) % 577 == 0 &&
-            (v + 19) % 41 == 0 &&
-            (v + 97) % 37 == 0 &&
-            (v + 0) % 29 == 0 &&
-            (v + 52) % 23 == 0 &&
-            (v + 48) % 19 == 0)
-        // get some kind of "progress" notification
-        .map(|v| {
-            println!("{}", v);
-            v
-        })
-        .filter(|v| (v + 43) % 17 == 0)
-        .filter(|v| (v + 42) % 13 == 0)
-        .take(1)
+    let mut busses = terminal.busses.into_iter()
+        .enumerate()
+        .filter(|(_, b)| b.is_some())
+        .map(|(i, b)| (i, b.unwrap()))
         .collect::<Vec<_>>();
 
-    println!("result: {:?}", initial);
+    busses.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+
+    let lb = 100000000000000_usize;
+    // let lb = 0_usize;
+    let mut t = lb + (lb % busses[0].1) - busses[0].0;
+
+    'main: loop {
+        let mut done = true;
+        for bus in busses.iter().skip(1) {
+            done &= (t + bus.0) % bus.1 == 0;
+            if !done {
+                t += busses[0].1;
+                continue 'main;
+            }
+        }
+
+        if done {
+            break;
+        }
+
+        t += busses[0].1;
+    }
+
+    println!("result: {}", t);
 
     Ok(())
 }
