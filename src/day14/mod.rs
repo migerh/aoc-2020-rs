@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use regex::Regex;
 use super::utils::ParseError;
 
@@ -9,14 +10,14 @@ enum Command {
 
 fn parse_command(s: &str) -> Result<Command, ParseError> {
     lazy_static!{
-        static ref RE_mask: Regex = Regex::new(r"^mask = ([01X]+)$").unwrap();
-        static ref RE_write: Regex = Regex::new(r"^mem\[(\d+)\] = (\d+)$").unwrap();
+        static ref RE_MASK: Regex = Regex::new(r"^mask = ([01X]+)$").unwrap();
+        static ref RE_WRITE: Regex = Regex::new(r"^mem\[(\d+)\] = (\d+)$").unwrap();
     }
 
-    let is_mask = RE_mask.is_match(s);
+    let is_mask = RE_MASK.is_match(s);
 
     if is_mask {
-        let cap = RE_mask.captures(s).ok_or(ParseError::new(&format!("Could not parse '{}' as mask", s)))?;
+        let cap = RE_MASK.captures(s).ok_or(ParseError::new(&format!("Could not parse '{}' as mask", s)))?;
 
         let mask: String = cap[1].chars()
             .map(|v| if v == 'X' {
@@ -38,7 +39,7 @@ fn parse_command(s: &str) -> Result<Command, ParseError> {
         let overwrite = u64::from_str_radix(&overwrite, 2)?;
         Ok(Command::Mask((mask, overwrite)))
     } else {
-        let cap = RE_write.captures(s).ok_or(ParseError::new(&format!("Could not parse '{}' as write", s)))?;
+        let cap = RE_WRITE.captures(s).ok_or(ParseError::new(&format!("Could not parse '{}' as write", s)))?;
         let address = cap[1].parse::<usize>()?;
         let value = cap[2].parse::<u64>()?;
         Ok(Command::Write((address, value)))
@@ -88,8 +89,66 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
+fn variants(mask: usize) -> Vec<usize> {
+    let mut variants = HashSet::new();
+    variants.insert(0);
+
+    for i in 0..36 {
+        let bit = (1_usize << i) as usize;
+
+        let candidate = mask & bit;
+        if candidate != 0 {
+            variants.insert(candidate);
+
+            let mut new_variants = vec![];
+            for v in &variants {
+                new_variants.push(v | candidate);
+            }
+
+            for v in new_variants {
+                variants.insert(v);
+            }
+        }
+    }
+
+    variants.into_iter().collect()
+}
+
+fn write(memory: &mut HashMap<usize, u64>, mask: u64, overwrite: u64, address: usize, value: u64) {
+    let overwrite = overwrite as usize;
+    let mask = mask as usize;
+
+    let variants = variants(mask);
+
+    for variant in variants {
+        let a = ((address | overwrite) & !mask) | variant;
+
+        memory.entry(a).and_modify(|v| *v = value).or_insert(value);
+    }
+}
+
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input();
+    let commands = parse_input()?;
+
+    let mut memory = HashMap::new();
+    let mut mask = (0, 0);
+
+    for c in &commands {
+        match c {
+            Command::Mask(m) => {
+                mask = *m;
+            },
+            Command::Write((a, v)) => {
+                write(&mut memory, mask.0, mask.1, *a, *v);
+            }
+        }
+    }
+
+    let result: u64 = memory.iter()
+        .map(|(_, v)| *v)
+        .sum();
+
+    println!("14/2: memory init result is: {}", result);
 
     Ok(())
 }
