@@ -152,16 +152,3 @@ pub fn problem2() -> Result<(), ParseError> {
 
     Ok(())
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
-}
