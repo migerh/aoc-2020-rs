@@ -158,10 +158,6 @@ pub fn problem2() -> Result<(), ParseError> {
         .filter(|t| is_valid(&input.rules, t))
         .collect::<Vec<_>>();
 
-    println!("Valid tickets {:?}", valid_nearby_tickets);
-
-    // let's assume all tickets have the same length and it's the same as the
-    // of rules
     let len = input.rules.len();
     let mut candidates = vec![];
 
@@ -171,26 +167,14 @@ pub fn problem2() -> Result<(), ParseError> {
             .map(|t| determine_valid_rules(&input.rules, t[i]))
             .collect::<Vec<_>>();
 
-        // println!("Valid rules for {} are {:?}", i, valid_rules);
-
         let mut rules_iter = valid_rules.iter();
         let mut one_rule = rules_iter.next().cloned().unwrap();
-        // println!("start: {:?}", one_rule);
 
         for r in rules_iter {
-            // println!("intersect with {:?}", r);
             one_rule = one_rule.intersection(&r).cloned().collect();
         }
 
-        println!("one rule for {}: {:?}", i, one_rule);
-
-        // let one_rule_to_rule_them_all = valid_rules.iter().next()
-        //     .map(|initial| valid_rules
-        //         .iter()
-        //         .fold(initial, |acc, curr| acc.intersection(&curr).cloned().collect()));
-        // candidates.push(one_rule.into_iter().next().unwrap().clone());
         candidates.push((i, one_rule));
-        println!("");
     }
 
     candidates.sort_by(|a, b| a.1.len().cmp(&b.1.len()));
@@ -203,7 +187,7 @@ pub fn problem2() -> Result<(), ParseError> {
         }
 
         if c.1.len() != 1 {
-            panic!("alles scheiße");
+            panic!("could not uniquely determine which column corresponds to which field");
         }
 
         let next_column = c.1.iter().next().unwrap();
@@ -212,13 +196,6 @@ pub fn problem2() -> Result<(), ParseError> {
     }
 
     let readable_candidates = columns.iter().map(|(i, c)| (i, c.description.clone())).collect::<Vec<_>>();
-    println!("Order of fields: {:?}", readable_candidates);
-
-    let bar = readable_candidates.iter()
-        .filter(|(_, d)| d.contains("departure"))
-        .map(|(i, _)| input.my_ticket[**i])
-        .collect::<Vec<_>>();
-    println!("rel fields in ticket: {:?}", bar);
 
     let result: u64 = readable_candidates.iter()
         .filter(|(_, d)| d.contains("departure"))
