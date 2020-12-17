@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use super::utils::ParseError;
 
-type Coords = (i64, i64, i64);
+type Coords = (i64, i64, i64, i64);
 type World = HashMap<Coords, char>;
 
 fn parse_input() -> World {
@@ -15,11 +15,12 @@ fn parse_input() -> World {
     let mut map = HashMap::new();
 
     let z = 0;
+    let w = 0;
     let mut y = 0;
     for line in v {
         let mut x = 0;
         for c in line {
-            map.entry((x, y, z)).or_insert(c);
+            map.entry((x, y, z, w)).or_insert(c);
             x += 1;
         }
         y += 1;
@@ -30,16 +31,18 @@ fn parse_input() -> World {
 
 fn count_neighbors(world: &World, coords: &Coords) -> i64 {
     let mut count: i64 = 0;
-    for dz in -1..=1 {
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                if dx == 0 && dy == 0 && dz == 0 {
-                    continue;
-                }
+    for dw in -1..=1 {
+        for dz in -1..=1 {
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    if dx == 0 && dy == 0 && dz == 0 && dw == 0 {
+                        continue;
+                    }
 
-                if let Some(v) = world.get(&(coords.0 + dx, coords.1 + dy, coords.2 + dz)) {
-                    if v == &'#' {
-                        count += 1;
+                    if let Some(v) = world.get(&(coords.0 + dx, coords.1 + dy, coords.2 + dz, coords.3 + dw)) {
+                        if v == &'#' {
+                            count += 1;
+                        }
                     }
                 }
             }
@@ -50,8 +53,8 @@ fn count_neighbors(world: &World, coords: &Coords) -> i64 {
 }
 
 fn size(world: &World) -> (Coords, Coords) {
-    let mut min = (1000, 1000, 1000);
-    let mut max = (-1000, -1000, -1000);
+    let mut min = (1000, 1000, 1000, 1000);
+    let mut max = (-1000, -1000, -1000, -1000);
 
     for (c, _) in world {
         if c.0 < min.0 {
@@ -66,6 +69,10 @@ fn size(world: &World) -> (Coords, Coords) {
             min.2 = c.2;
         }
 
+        if c.3 < min.3 {
+            min.3 = c.3;
+        }
+
         if c.0 > max.0 {
             max.0 = c.0;
         }
@@ -77,6 +84,10 @@ fn size(world: &World) -> (Coords, Coords) {
         if c.2 > max.2 {
             max.2 = c.2;
         }
+
+        if c.3 > max.3 {
+            max.3 = c.3;
+        }
     }
 
     (min, max)
@@ -85,13 +96,15 @@ fn size(world: &World) -> (Coords, Coords) {
 fn grow(world: &mut World) {
     let size = size(world);
 
-    let min = (size.0.0 - 1, size.0.1 - 1, size.0.2 - 1);
-    let max = (size.1.0 + 1, size.1.1 + 1, size.1.2 + 1);
+    let min = (size.0.0 - 1, size.0.1 - 1, size.0.2 - 1, size.0.3 - 1);
+    let max = (size.1.0 + 1, size.1.1 + 1, size.1.2 + 1, size.1.3 + 1);
 
-    for z in min.2..=max.2 {
-        for y in min.1..=max.1 {
-            for x in min.0..=max.0 {
-                world.entry((x, y, z)).or_insert('.');
+    for w in min.3..=max.3 {
+        for z in min.2..=max.2 {
+            for y in min.1..=max.1 {
+                for x in min.0..=max.0 {
+                    world.entry((x, y, z, w)).or_insert('.');
+                }
             }
         }
     }
@@ -127,21 +140,23 @@ fn count_alive(world: &World) -> u64 {
 fn print_world(world: &World) {
     let size = size(world);
 
-    for z in size.0.2..=size.1.2 {
-        println!("z = {}", z);
-        for y in size.0.1..=size.1.1 {
-            for x in size.0.0..=size.1.0 {
-                if let Some(c) = world.get(&(x, y, z)) {
-                    if c == &'#' {
-                        print!("#");
-                    } else {
-                        print!(".");
+    for w in size.0.3..=size.1.3 {
+        for z in size.0.2..=size.1.2 {
+            println!("z = {}, w = {}", z, w);
+            for y in size.0.1..=size.1.1 {
+                for x in size.0.0..=size.1.0 {
+                    if let Some(c) = world.get(&(x, y, z, w)) {
+                        if c == &'#' {
+                            print!("#");
+                        } else {
+                            print!(".");
+                        }
                     }
                 }
+                println!("");
             }
             println!("");
         }
-        println!("");
     }
 }
 
@@ -163,17 +178,4 @@ pub fn problem2() -> Result<(), ParseError> {
     let input = parse_input();
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
