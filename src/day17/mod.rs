@@ -175,7 +175,5 @@ pub fn problem1() -> Result<(), ParseError> {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input();
-
     Ok(())
 }
