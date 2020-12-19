@@ -5,7 +5,7 @@ type Rules<'a> = Vec<&'a str>;
 type Input<'a> = Vec<&'a str>;
 
 fn parse_input() -> (Rules<'static>, Input<'static>) {
-    let raw_input = include_str!("./data/input.txt");
+    let raw_input = include_str!("./data/example.txt");
     let rules_and_input = raw_input
         .split("\n\n")
         .collect::<Vec<_>>();
@@ -23,13 +23,13 @@ fn parse_input() -> (Rules<'static>, Input<'static>) {
     (rules, input)
 }
 
-fn convert_rules_to_PEG(rules: Rules) -> String {
+fn convert_rules_to_peg(rules: Rules) -> String {
     let mut rules = rules;
 
     // dynparser expects one rule called 'main' as an entry point
     // Since rule '0' corresponds to this in our grammar, we just define one
     // additional rule:
-    rules.push("main = 0");
+    rules.push("main: 0");
 
     // the PEG parser expects a newline at the end of the string defining the
     // grammar...
@@ -48,8 +48,7 @@ fn convert_rules_to_PEG(rules: Rules) -> String {
 pub fn problem1() -> Result<(), ParseError> {
     let (rules, input) = parse_input();
 
-
-    let prepared_rules = convert_rules_to_PEG(rules);
+    let prepared_rules = convert_rules_to_peg(rules);
 
     let peg_rules = rules_from_peg(&prepared_rules).unwrap();
 
@@ -58,26 +57,12 @@ pub fn problem1() -> Result<(), ParseError> {
         .filter(|m| *m)
         .count();
 
-    print!("19/1: # of successfully parsed input lines: {}", result);
+    println!("19/1: # of successfully parsed input lines: {}", result);
 
     Ok(())
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input();
-
+    println!("Solution for part 2 can be found in day19.mjs");
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
