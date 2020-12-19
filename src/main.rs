@@ -4,6 +4,7 @@
 extern crate lazy_static;
 extern crate regex;
 extern crate num;
+extern crate dynparser;
 
 mod day1;
 mod day2;
@@ -23,11 +24,12 @@ mod day15;
 mod day16;
 mod day17;
 mod day18;
+mod day19;
 mod utils;
 
 fn run() -> Result<(), utils::ParseError> {
-  day18::problem1()?;
-  day18::problem2()?;
+  day19::problem1()?;
+  day19::problem2()?;
 
   if false {
     day1::problem1();
@@ -80,6 +82,9 @@ fn run() -> Result<(), utils::ParseError> {
 
     day17::problem1()?;
     day17::problem2()?;
+
+    day18::problem1()?;
+    day18::problem2()?;
   }
   Ok(())
 }
