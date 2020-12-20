@@ -54,9 +54,9 @@ impl Tile {
         self.id
     }
 
-    pub fn count_sea(&self) -> usize {
+    pub fn count(&self, needle: char) -> usize {
         self.data.iter()
-            .map(|l| l.iter().filter(|c| **c == '#').count())
+            .map(|l| l.iter().filter(|c| **c == needle).count())
             .sum()
     }
 
