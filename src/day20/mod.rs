@@ -71,24 +71,52 @@ impl TileHash {
     }
 
     fn number_of_neighbors(&self, all_hashes: &Vec<TileHash>) -> u64 {
+        self.find_neighbors(all_hashes).len() as u64
+    }
+
+    fn find_neighbors(&self, all_hashes: &Vec<TileHash>) -> Vec<TileConnection> {
         // we could account for flipping in here by inverting the hashes...
         let other_tiles = all_hashes.iter().filter(|t| t.id != self.id).collect::<Vec<_>>();
 
-        let mut count = 0;
-        for h in &self.data {
-            count += other_tiles.iter()
-                .filter(|oh| oh.data.contains(h))
-                .count();
+        let find = |my_border: usize, my_border_hash: &u64, flipped: bool| {
+            other_tiles.iter()
+                .filter_map(|neighbor| {
+                    let matching_borders = neighbor.data.iter().enumerate()
+                        .filter_map(|(next_border, other_hash)| if other_hash == my_border_hash {
+                            Some(TileConnection { id: self.id, my_border, next_tile: neighbor.id, next_border, flipped })
+                        } else {
+                            None
+                        })
+                        .collect::<Vec<_>>();
+
+                        let number_of_shared_borders = matching_borders.len();
+
+                    if number_of_shared_borders > 1 {
+                        panic!(format!("Tile {} shares more than one border with tile {}", self.id, neighbor.id))
+                    } else if number_of_shared_borders == 1 {
+                        Some(matching_borders[0])
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let mut connections = vec![];
+        for h in self.data.iter().enumerate() {
+            let (my_border, my_border_hash) = h;
+            let mut connection = find(my_border, my_border_hash, false);
+            connections.append(&mut connection);
         }
 
         // do everything again but flip it
-        for h in self.data.iter().map(|h| Self::flip(*h)) {
-            count += other_tiles.iter()
-                .filter(|oh| oh.data.contains(&h))
-                .count();
+        for h in self.data.iter().map(|h| Self::flip(*h)).enumerate() {
+            let (my_border, my_border_hash) = h;
+            let mut connection = find(my_border, &my_border_hash, true);
+            connections.append(&mut connection);
         }
 
-        count as u64
+        connections
     }
 
     fn print(&self) {
@@ -100,7 +128,9 @@ impl TileHash {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 struct TileConnection {
+    id: u64,
     my_border: usize,
     next_tile: u64,
     next_border: usize,
@@ -134,6 +164,26 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
+fn find_next_tile(tile: u64, border: usize, connections: &Vec<TileConnection>) -> Option<&TileConnection> {
+    connections.iter()
+        .find(|c| c.next_tile == tile && c.next_border == border)
+}
+
+fn find_right_border(tile: u64, is_even: bool, connections: &Vec<TileConnection>) -> usize {
+    connections.iter()
+        .filter(|c| c.id == tile)
+        .map(|c| c.my_border)
+        // We are looking for the right border of a tile at the left border of
+        // the image. Since it is a border tile, there are only three
+        // neighbors. If the tile is not rotated, there will be two neighbors
+        // in even directions (0 = up, 2 = down). the same is true if the tile
+        // is rotated 180 degrees. If it is rotated by 90/270 degrees, the
+        // border to the right will be odd.
+        .filter(|b| b % 2 == if is_even { 0 } else { 1 })
+        .next()
+        .unwrap()
+}
+
 pub fn problem2() -> Result<(), ParseError> {
     let input = parse_input()?;
 
@@ -141,18 +191,73 @@ pub fn problem2() -> Result<(), ParseError> {
         .map(|t| t.hashes())
         .collect::<Vec<_>>();
 
-    // for hash in &hashes {
-    //     hash.print();
-    // }
-
-    let corners = hashes.iter()
-        .map(|h| (h.id, h.number_of_neighbors(&hashes)))
-        // .filter(|n| n.1 == 2)
+    let relations = hashes.iter()
+        .map(|h| (h.id, h.find_neighbors(&hashes)))
         .collect::<Vec<_>>();
 
-    println!("corners: {:?}", corners.iter().filter(|t| t.1 == 2).count());
-    println!("borders: {:?}", corners.iter().filter(|t| t.1 == 3).count());
-    println!("inside: {:?}", corners.iter().filter(|t| t.1 == 4).count());
+    // Both the example and my input have a corner that can be considered "top
+    // left" without rotation or flipping the image.
+    // "Top left" is defined as the tile that has two neighbors and the
+    // neighbors are to the right and below the top left tile, i.e.
+    //   my_border = [1, 2]
+    let top_left = &relations.iter()
+        // find corners
+        .filter(|r| r.1.len() == 2)
+        // find corner with neighbors to the right (my_border == 1) and bottom
+        // (my_border == 2) of the corner
+        .filter(|r| {
+            let my_borders = r.1.iter().map(|v| v.my_border).collect::<Vec<_>>();
+            my_borders.contains(&1) && my_borders.contains(&2)
+        })
+        .next().unwrap();
+
+    println!("top left: {:?}", top_left);
+    let connections = relations.iter()
+        .map(|v| &v.1)
+        .cloned()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let size = (input.len() as f32).sqrt() as usize;
+
+    let mut current_y_tile = top_left.0;
+    let mut current_y_border = 2;
+    let mut image = vec![];
+    let mut is_x_border_even = false;
+    for y in 0..size {
+        // println!("constructing line {}", y);
+
+        // construct a line
+        let mut current_tile = current_y_tile;
+        // todo: find appropriate exit border and consider possible rotation :/
+        let mut current_border = find_right_border(current_tile, is_x_border_even, &connections);
+        let mut line = vec![current_tile];
+        for x in 0..size - 1 {
+            // println!("#{}: {} on border {}", x, current_tile, current_border);
+            if let Some(next) = find_next_tile(current_tile, current_border, &connections) {
+                current_tile = next.id;
+                current_border = (next.my_border + 2) % 4;
+                line.push(current_tile);
+            }
+        }
+        image.push(line);
+
+        if let Some(next_y) = find_next_tile(current_y_tile, current_y_border, &connections) {
+            current_y_tile = next_y.id;
+            current_y_border = (next_y.my_border + 2) % 4;
+            // if the vertical border is even, the horizontal border is not
+            is_x_border_even = current_y_border % 2 != 0;
+        }
+    }
+
+    for l in image {
+        println!("{}: {:?}", l.len(), l);
+    }
+
+    // for r in relations {
+    //     println!("Tile {}", r.0);
+    //     println!("My borders: {:?}", r.1.iter().map(|v| v.my_border).collect::<Vec<_>>());
+    // }
 
     // let result: u64 = corners.iter()
     //     .map(|h| h.0)
