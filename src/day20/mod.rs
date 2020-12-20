@@ -46,6 +46,19 @@ impl Tile {
         }
     }
 
+    fn count_sea(&self) -> usize {
+        self.data.iter()
+            .map(|l| l.iter().filter(|c| **c == '#').count())
+            .sum()
+    }
+
+    fn transform(&self, rotate: usize, flip_y: bool, flip_x: bool) -> Self {
+        let flipped_data = (0..self.data.len())
+            .map(|l| self.get_line(l, rotate, flip_y, flip_x))
+            .collect::<Vec<_>>();
+        Tile { id: 0, data: flipped_data }
+    }
+
     fn hash_line(line: &Vec<char>) -> u64 {
         line.iter().enumerate()
             .fold(0, |acc, (i, c)| acc + if c == &'#' { 1u64 << i as u64 } else { 0 })
@@ -73,7 +86,7 @@ impl Tile {
         } else if rotation == 1 {
             self.data.iter().map(|v| v[line]).rev().collect::<Vec<_>>()
         } else if rotation == 2 {
-            self.data[9 - line].iter().rev().cloned().collect::<Vec<_>>()
+            self.data[self.data.len() - line - 1].iter().rev().cloned().collect::<Vec<_>>()
         } else if rotation == 3 {
             self.data.iter().map(|v| v[self.data.len() - line - 1]).collect::<Vec<_>>()
         } else {
@@ -181,7 +194,7 @@ struct TileConnection {
 }
 
 fn parse_input() -> Result<Vec<Tile>, ParseError> {
-    let input = include_str!("./data/example.txt");
+    let input = include_str!("./data/input.txt");
     input
         .split("\n\n")
         .filter(|v| *v != "")
@@ -247,49 +260,10 @@ fn rotation_from_exit_down(exit: usize) -> usize {
     }
 }
 
-pub fn problem2() -> Result<(), ParseError> {
-    let tiles = parse_input()?;
-
-    let hashes = tiles.iter()
-        .map(|t| t.hashes())
-        .collect::<Vec<_>>();
-
-    let relations = hashes.iter()
-        .map(|h| (h.id, h.find_neighbors(&hashes)))
-        .collect::<Vec<_>>();
-
-    // Both the example and my input have a corner that can be considered "top
-    // left" without rotation or flipping the image.
-    // "Top left" is defined as the tile that has two neighbors and the
-    // neighbors are to the right and below the top left tile, i.e.
-    //   my_border = [1, 2]
-    let top_left = &relations.iter()
-        // find corners
-        .filter(|r| r.1.len() == 2)
-        // find corner with neighbors to the right (my_border == 1) and bottom
-        // (my_border == 2) of the corner
-        .filter(|r| {
-            let my_borders = r.1.iter().map(|v| v.my_border).collect::<Vec<_>>();
-            my_borders.contains(&1) && my_borders.contains(&2)
-        })
-        .next().unwrap();
-
-    println!("top left: {:?}", top_left);
-    let connections = relations.iter()
-        .map(|v| &v.1)
-        .cloned()
-        .flatten()
-        .collect::<Vec<_>>();
-
-    let mut connections_map = HashMap::new();
-    for c in &connections {
-        connections_map.entry((c.id, c.my_border)).or_insert(c);
-    }
-
-    // construct the image based on the tile connections
+fn reconstruct_image(tiles: &Vec<Tile>, connections: &Vec<TileConnection>, top_left: u64) -> Tile {
     let size = (tiles.len() as f32).sqrt() as usize;
 
-    let mut current_y_tile = top_left.0;
+    let mut current_y_tile = top_left;
     let mut current_y_border = 2;
     let mut image = vec![];
     let mut is_x_border_even = false;
@@ -333,7 +307,7 @@ pub fn problem2() -> Result<(), ParseError> {
     // reconstruct image
     let mut high_c = vec![];
     let mut printed_tiles = HashSet::new();
-    for l in image.iter().take(12) {
+    for l in image.iter() {
         for y in 0..8 {
             let mut line = vec![];
             for (tile_id, rotation, y_flipped, x_flipped) in l.iter() {
@@ -346,13 +320,129 @@ pub fn problem2() -> Result<(), ParseError> {
         }
     }
 
-    let image = Tile { id: 0, data: high_c };
-    image.print();
-    let flipped_data = (0..24)
-        .map(|l| image.get_line(l, 0, true, false))
+    Tile { id: 0, data: high_c }
+}
+
+fn get_monster() -> Vec<Vec<char>> {
+    include_str!("./data/monster.txt")
+        .lines()
+        .map(|v| v.chars().collect())
+        .collect()
+}
+
+type Coords = (usize, usize);
+fn find_monster(image: &Tile, monster: &Vec<Vec<char>>) -> Vec<Coords> {
+    let size_image = image.data.len();
+    let height_monster = monster.len();
+    let width_monster = monster[0].len();
+
+    let mut positions = vec![];
+    for y in 0..(size_image-height_monster) {
+        for x in 0..(size_image-width_monster) {
+            let mut found = true;
+            for my in 0..height_monster {
+                for mx in 0..width_monster {
+                    if monster[my][mx] == '#' && image.data[y + my][x + mx] != '#' {
+                        found = false;
+                        break;
+                    }
+                }
+                if !found {
+                    break;
+                }
+            }
+
+            if found {
+                positions.push((x, y));
+            }
+        }
+    }
+
+    positions
+}
+
+fn transform_and_find_monster(image: &Tile, monster: &Vec<Vec<char>>) -> Option<(Tile, Vec<Coords>)> {
+    for r in 0..4 {
+        for f in vec![true, false] {
+            let transformed = image.transform(r, f, false);
+            let positions = find_monster(&transformed, monster);
+            if !positions.is_empty() {
+                return Some((transformed, positions));
+            }
+        }
+    }
+
+    None
+}
+
+fn remove_monsters(image: Tile, monster: &Vec<Vec<char>>, positions: &Vec<Coords>) -> Tile {
+    let height_monster = monster.len();
+    let width_monster = monster[0].len();
+    let mut image = image;
+
+    for p in positions {
+        for y in 0..height_monster {
+            for x in 0..width_monster {
+                if monster[y][x] == '#' {
+                    image.data[p.1 + y][p.0 + x] = 'O';
+                }
+            }
+        }
+    }
+    image
+}
+
+pub fn problem2() -> Result<(), ParseError> {
+    let tiles = parse_input()?;
+
+    let hashes = tiles.iter()
+        .map(|t| t.hashes())
         .collect::<Vec<_>>();
-    let flipped_image = Tile { id: 0, data: flipped_data };
-    flipped_image.print();
+
+    let relations = hashes.iter()
+        .map(|h| (h.id, h.find_neighbors(&hashes)))
+        .collect::<Vec<_>>();
+
+    // Both the example and my input have a corner that can be considered "top
+    // left" without rotation or flipping the image.
+    // "Top left" is defined as the tile that has two neighbors and the
+    // neighbors are to the right and below the top left tile, i.e.
+    //   my_border = [1, 2]
+    let top_left = &relations.iter()
+        // find corners
+        .filter(|r| r.1.len() == 2)
+        // find corner with neighbors to the right (my_border == 1) and bottom
+        // (my_border == 2) of the corner
+        .filter(|r| {
+            let my_borders = r.1.iter().map(|v| v.my_border).collect::<Vec<_>>();
+            my_borders.contains(&1) && my_borders.contains(&2)
+        })
+        .next().unwrap();
+
+    let connections = relations.iter()
+        .map(|v| &v.1)
+        .cloned()
+        .flatten()
+        .collect::<Vec<_>>();
+
+    let mut connections_map = HashMap::new();
+    for c in &connections {
+        connections_map.entry((c.id, c.my_border)).or_insert(c);
+    }
+
+    // construct the image based on the tile connections
+    let image = reconstruct_image(&tiles, &connections, top_left.0);
+
+    // rotate and look at image + flip for monsters
+    let monster = get_monster();
+    if let Some((transformed, monsters)) = transform_and_find_monster(&image, &monster) {
+        let image_without_monsters = remove_monsters(transformed, &monster, &monsters);
+        image_without_monsters.print();
+        let result = image_without_monsters.count_sea();
+        println!("20/2: water roughness: {}", result);
+    } else {
+        println!("No monsters found!");
+    }
 
     Ok(())
 }
