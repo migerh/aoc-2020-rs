@@ -1,197 +1,14 @@
 use std::collections::HashSet;
 use std::collections::HashMap;
 use std::str::FromStr;
-use regex::Regex;
+
+mod tile;
+mod tilehash;
+mod tileconnection;
+
 use super::utils::ParseError;
-
-#[derive(Debug)]
-struct Tile {
-    id: u64,
-    data: Vec<Vec<char>>,
-}
-
-impl FromStr for Tile {
-    type Err = ParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static!{
-            static ref RE: Regex = Regex::new(r"^Tile (\d+):$").unwrap();
-        }
-
-        let id_str = s.lines().take(1).next().ok_or(ParseError::new(&format!("Could not find tile id in {}", s)))?;
-
-        let cap = RE.captures(id_str).ok_or(ParseError::new(&format!("Could not extract id from tile header: {}", id_str)))?;
-        let id = cap[1].parse::<u64>()?;
-        let data = s.lines().skip(1).map(|v| v.chars().collect::<Vec<_>>()).collect::<Vec<_>>();
-
-        // remove the inner stuff from the tiles for better debugging
-        // let mut data = data;
-        // for y in 1..(data.len()-1) {
-        //     for x in 1..(data[y].len()-1) {
-        //         data[y][x] = ' ';
-        //     }
-        // }
-        Ok(Self { id, data })
-    }
-}
-
-impl Tile {
-    fn print(&self) {
-        println!("Tile {}:", self.id);
-        for line in &self.data {
-            for c in line {
-                print!("{}", c);
-            }
-            println!();
-        }
-    }
-
-    fn count_sea(&self) -> usize {
-        self.data.iter()
-            .map(|l| l.iter().filter(|c| **c == '#').count())
-            .sum()
-    }
-
-    fn transform(&self, rotate: usize, flip_y: bool, flip_x: bool) -> Self {
-        let flipped_data = (0..self.data.len())
-            .map(|l| self.get_line(l, rotate, flip_y, flip_x))
-            .collect::<Vec<_>>();
-        Tile { id: 0, data: flipped_data }
-    }
-
-    fn hash_line(line: &Vec<char>) -> u64 {
-        line.iter().enumerate()
-            .fold(0, |acc, (i, c)| acc + if c == &'#' { 1u64 << i as u64 } else { 0 })
-    }
-
-    fn hashes(&self) -> TileHash {
-        let top = Self::hash_line(&self.data[0]);
-        let right = Self::hash_line(&self.data.iter().map(|v| v[9]).collect::<Vec<_>>());
-
-        // By flipping the next two hashes we make the hashes of the tile
-        // rotation invariant
-        let bottom = TileHash::flip(Self::hash_line(&self.data[9]));
-        let left = TileHash::flip(Self::hash_line(&self.data.iter().map(|v| v[0]).collect::<Vec<_>>()));
-
-        TileHash { id: self.id, data: vec![top, right, bottom, left] }
-    }
-
-    fn get_line(&self, line: usize, rotation: usize, y_flipped: bool, x_flipped: bool) -> Vec<char> {
-        let line = if y_flipped { self.data.len() - line - 1 } else { line };
-
-        // mighty inefficient, but it's at least somewhat recognizable what is
-        // happening in here.
-        let rotated_line = if rotation == 0 {
-            self.data[line].clone()
-        } else if rotation == 1 {
-            self.data.iter().map(|v| v[line]).rev().collect::<Vec<_>>()
-        } else if rotation == 2 {
-            self.data[self.data.len() - line - 1].iter().rev().cloned().collect::<Vec<_>>()
-        } else if rotation == 3 {
-            self.data.iter().map(|v| v[self.data.len() - line - 1]).collect::<Vec<_>>()
-        } else {
-            panic!(format!("Unknown rotation: {}", rotation));
-        };
-
-        let flipped_line = if x_flipped {
-            rotated_line.iter().rev().cloned().collect::<Vec<_>>()
-        } else {
-            rotated_line
-        };
-
-        flipped_line
-    }
-
-    fn get_line_without_border(&self, line: usize, rotation: usize, y_flipped: bool, x_flipped: bool) -> Vec<char> {
-        let line = line + 1;
-        let line = self.get_line(line, rotation, y_flipped, x_flipped);
-
-        line.iter().skip(1).take(8).cloned().collect()
-    }
-}
-
-#[derive(Debug)]
-struct TileHash {
-    id: u64,
-    data: Vec<u64>,
-}
-
-impl TileHash {
-    fn flip(hash: u64) -> u64 {
-        let mut flip = 0;
-        for i in 0..10 {
-            let bit = 1 << i;
-            flip += if hash & bit != 0 { 1 } else { 0 } << (9 - i);
-        }
-        flip
-    }
-
-    fn number_of_neighbors(&self, all_hashes: &Vec<TileHash>) -> u64 {
-        self.find_neighbors(all_hashes).len() as u64
-    }
-
-    fn find_neighbors(&self, all_hashes: &Vec<TileHash>) -> Vec<TileConnection> {
-        // we could account for flipping in here by inverting the hashes...
-        let other_tiles = all_hashes.iter().filter(|t| t.id != self.id).collect::<Vec<_>>();
-
-        let find = |my_border: usize, my_border_hash: &u64, flipped: bool| {
-            other_tiles.iter()
-                .filter_map(|neighbor| {
-                    let matching_borders = neighbor.data.iter().enumerate()
-                        .filter_map(|(next_border, other_hash)| if other_hash == my_border_hash {
-                            Some(TileConnection { id: self.id, my_border, next_tile: neighbor.id, next_border, flipped })
-                        } else {
-                            None
-                        })
-                        .collect::<Vec<_>>();
-
-                        let number_of_shared_borders = matching_borders.len();
-
-                    if number_of_shared_borders > 1 {
-                        panic!(format!("Tile {} shares more than one border with tile {}", self.id, neighbor.id))
-                    } else if number_of_shared_borders == 1 {
-                        Some(matching_borders[0])
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-        };
-
-        let mut connections = vec![];
-        for h in self.data.iter().enumerate() {
-            let (my_border, my_border_hash) = h;
-            let mut connection = find(my_border, my_border_hash, true);
-            connections.append(&mut connection);
-        }
-
-        // do everything again but flip it
-        for h in self.data.iter().map(|h| Self::flip(*h)).enumerate() {
-            let (my_border, my_border_hash) = h;
-            let mut connection = find(my_border, &my_border_hash, false);
-            connections.append(&mut connection);
-        }
-
-        connections
-    }
-
-    fn print(&self) {
-        println!("Tile {}:", self.id);
-        for h in &self.data {
-            print!("{}  ", h);
-        }
-        println!("");
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct TileConnection {
-    id: u64,
-    my_border: usize,
-    next_tile: u64,
-    next_border: usize,
-    flipped: bool,
-}
+use tile::Tile;
+use tileconnection::TileConnection;
 
 fn parse_input() -> Result<Vec<Tile>, ParseError> {
     let input = include_str!("./data/input.txt");
@@ -210,7 +27,7 @@ pub fn problem1() -> Result<(), ParseError> {
         .collect::<Vec<_>>();
 
     let result: u64 = hashes.iter()
-        .map(|h| (h.id, h.number_of_neighbors(&hashes)))
+        .map(|h| (h.id(), h.number_of_neighbors(&hashes)))
         .filter(|n| n.1 == 2)
         .map(|h| h.0)
         .product();
@@ -301,7 +118,7 @@ fn reconstruct_image(tiles: &Vec<Tile>, connections: &Vec<TileConnection>, top_l
     // generate a hashmap for easier id based lookup of tiles
     let mut tile_map = HashMap::new();
     for tile in tiles {
-        tile_map.entry(tile.id).or_insert(tile);
+        tile_map.entry(tile.id()).or_insert(tile);
     }
 
     // reconstruct image
@@ -320,7 +137,7 @@ fn reconstruct_image(tiles: &Vec<Tile>, connections: &Vec<TileConnection>, top_l
         }
     }
 
-    Tile { id: 0, data: high_c }
+    Tile::new(0, high_c)
 }
 
 fn get_monster() -> Vec<Vec<char>> {
@@ -400,7 +217,7 @@ pub fn problem2() -> Result<(), ParseError> {
         .collect::<Vec<_>>();
 
     let relations = hashes.iter()
-        .map(|h| (h.id, h.find_neighbors(&hashes)))
+        .map(|h| (h.id(), h.find_neighbors(&hashes)))
         .collect::<Vec<_>>();
 
     // Both the example and my input have a corner that can be considered "top
@@ -437,7 +254,7 @@ pub fn problem2() -> Result<(), ParseError> {
     let monster = get_monster();
     if let Some((transformed, monsters)) = transform_and_find_monster(&image, &monster) {
         let image_without_monsters = remove_monsters(transformed, &monster, &monsters);
-        image_without_monsters.print();
+        // image_without_monsters.print();
         let result = image_without_monsters.count_sea();
         println!("20/2: water roughness: {}", result);
     } else {
@@ -445,17 +262,4 @@ pub fn problem2() -> Result<(), ParseError> {
     }
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
