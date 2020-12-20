@@ -55,7 +55,7 @@ impl Tile {
         TileHash { id: self.id, data: vec![top, right, bottom, left] }
     }
 
-    fn get_line(&self, line: usize, rotation: usize, x_flipped: bool, y_flipped: bool) -> Vec<char> {
+    fn get_line(&self, line: usize, rotation: usize, y_flipped: bool, x_flipped: bool) -> Vec<char> {
         let line = if y_flipped { 9 - line } else { line };
 
         // mighty inefficient, but it's at least somewhat recognizable what is
@@ -166,7 +166,7 @@ struct TileConnection {
 }
 
 fn parse_input() -> Result<Vec<Tile>, ParseError> {
-    let input = include_str!("./data/example.txt");
+    let input = include_str!("./data/input.txt");
     input
         .split("\n\n")
         .filter(|v| *v != "")
@@ -343,6 +343,9 @@ pub fn problem2() -> Result<(), ParseError> {
     println!("Considered tiles: {:?}", printed_tiles);
     let image = Tile { id: 0, data: high_c };
     image.print();
+
+    println!("3079");
+    tile_map.get(&3079).unwrap().print();
 
     // for r in relations {
     //     println!("Tile {}", r.0);
