@@ -133,14 +133,14 @@ impl TileHash {
         let mut connections = vec![];
         for h in self.data.iter().enumerate() {
             let (my_border, my_border_hash) = h;
-            let mut connection = find(my_border, my_border_hash, false);
+            let mut connection = find(my_border, my_border_hash, true);
             connections.append(&mut connection);
         }
 
         // do everything again but flip it
         for h in self.data.iter().map(|h| Self::flip(*h)).enumerate() {
             let (my_border, my_border_hash) = h;
-            let mut connection = find(my_border, &my_border_hash, true);
+            let mut connection = find(my_border, &my_border_hash, false);
             connections.append(&mut connection);
         }
 
@@ -256,6 +256,11 @@ pub fn problem2() -> Result<(), ParseError> {
         .flatten()
         .collect::<Vec<_>>();
 
+    let mut connections_map = HashMap::new();
+    for c in &connections {
+        connections_map.entry((c.id, c.my_border)).or_insert(c);
+    }
+
     // construct the image based on the tile connections
     let size = (tiles.len() as f32).sqrt() as usize;
 
@@ -263,38 +268,55 @@ pub fn problem2() -> Result<(), ParseError> {
     let mut current_y_border = 2;
     let mut image = vec![];
     let mut is_x_border_even = false;
-    let mut y_flipped = false;
-    let mut x_flipped = false;
-    let mut current_x_flipped = connections.iter().find(|c| c.id == current_y_tile && c.my_border == 1).unwrap().flipped;
+    let mut y_flip = false;
+    let mut x_flip = false;
+    // let mut y_flipped = false;
+    // let mut x_flipped = false;
+    // let mut current_x_flipped = connections_map.get(&(current_y_tile, 1)).unwrap().flipped;
+    // let mut current_x_flipped = connections.iter().find(|c| c.id == current_y_tile && c.my_border == 1).unwrap().flipped;
+    let mut debug = true;
     for _y in 0..size {
         // println!("constructing line {}", y);
 
         // construct a line
         let mut current_tile = current_y_tile;
         let mut current_border = find_right_border(current_tile, is_x_border_even, &connections);
-        let mut current_flipped = connections.iter().find(|c| c.id == current_y_tile && c.my_border == 1).unwrap().flipped;
+        // let mut current_flipped = connections_map.get(&(current_y_tile, current_border)).unwrap().flipped;
         // let mut line = vec![(current_tile, (current_border + 3) % 4, y_flipped, x_flipped)];
-        let mut line = vec![(current_tile, rotation_from_exit(current_border), y_flipped, x_flipped)];
+        let mut line = vec![(current_tile, rotation_from_exit(current_border), y_flip, false)];
         for _x in 0..size - 1 {
-            // println!("#{}: {} on border {}", x, current_tile, current_border);
+            // println!("#{}: {} on border {}", _x, current_tile, current_border);
+            if debug {
+                print!("{}  {} ", current_tile, current_border);
+                if current_tile == 1277 {
+                    debug = false;
+                }
+            }
             if let Some(next) = find_next_tile(current_tile, current_border, &connections) {
                 current_tile = next.id;
                 current_border = (next.my_border + 2) % 4;
-                y_flipped = next.flipped ^ current_flipped;
-                current_flipped = next.flipped;
-                // if next.flipped {
-                //     y_flipped = !y_flipped;
-                // }
-                line.push((current_tile, rotation_from_exit(current_border), y_flipped, x_flipped));
+                if next.flipped {
+                    y_flip = !y_flip;
+                }
+                // current_flipped = next.flipped;
+                if debug {
+                    print!("({},{}) {}   ", if !next.flipped{ "o" } else { "x" }, rotation_from_exit(current_border), next.my_border);
+                    println!("{:?}", next);
+                    // println!("cb {}, r {}, y {}, x {}", current_border, rotation_from_exit(current_border), y_flipped, x_flipped);
+                }
+                // line.push((current_tile, rotation_from_exit(current_border), next.flipped, false));
+                line.push((current_tile, rotation_from_exit(current_border), y_flip, false));
             }
         }
+        println!("");
         image.push(line);
 
         if let Some(next_y) = find_next_tile(current_y_tile, current_y_border, &connections) {
             current_y_tile = next_y.id;
             current_y_border = (next_y.my_border + 2) % 4;
-            x_flipped = next_y.flipped ^ current_x_flipped;
-            current_x_flipped = next_y.flipped;
+            y_flip = next_y.flipped;
+            // x_flipped = next_y.flipped != current_x_flipped;
+            // current_x_flipped = next_y.flipped;
             // if the vertical border is even, the horizontal border is not
             // → tile is rotated and we need to find another exit to the right
             // to construct the next line.
@@ -309,13 +331,6 @@ pub fn problem2() -> Result<(), ParseError> {
     let mut tile_map = HashMap::new();
     for tile in tiles {
         tile_map.entry(tile.id).or_insert(tile);
-    }
-
-    for l in &image {
-        for e in l {
-            print!("{} ", e.0);
-        }
-        println!("");
     }
 
     // reconstruct image
@@ -336,16 +351,20 @@ pub fn problem2() -> Result<(), ParseError> {
         high_c.push(vec![' '; 33]);
     }
 
-    for c in connections {
-        println!("{} {:?}", c.id, c);
+    // for c in connections {
+    //     println!("{} {:?}", c.id, c);
+    // }
+
+    for l in image.iter().take(1) {
+        for e in l {
+            print!("{} ", e.0);
+        }
+        println!("");
     }
 
     println!("Considered tiles: {:?}", printed_tiles);
     let image = Tile { id: 0, data: high_c };
     image.print();
-
-    println!("3079");
-    tile_map.get(&3079).unwrap().print();
 
     // for r in relations {
     //     println!("Tile {}", r.0);
