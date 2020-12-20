@@ -29,9 +29,9 @@ impl TileHash {
     }
 
     pub fn find_neighbors(&self, all_hashes: &Vec<TileHash>) -> Vec<TileConnection> {
-        // we could account for flipping in here by inverting the hashes...
         let other_tiles = all_hashes.iter().filter(|t| t.id != self.id).collect::<Vec<_>>();
 
+        // find all tiles that share a border with the given tile
         let find = |my_border: usize, my_border_hash: &u64, flipped: bool| {
             other_tiles.iter()
                 .filter_map(|neighbor| {

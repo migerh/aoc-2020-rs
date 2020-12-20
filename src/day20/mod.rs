@@ -87,7 +87,7 @@ pub fn problem2() -> Result<(), ParseError> {
     // construct the image based on the tile connections
     let image = reconstruct_image(&tiles, &connections, top_left.0);
 
-    // rotate and look at image + flip for monsters
+    // rotate and flip image and look for monsters
     let monster = get_monster();
     if let Some((transformed, monsters)) = transform_and_find_pattern(&image, &monster) {
         let image_without_monsters = remove_pattern(transformed, &monster, &monsters);
