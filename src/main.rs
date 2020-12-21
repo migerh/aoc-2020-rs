@@ -26,11 +26,12 @@ mod day17;
 mod day18;
 mod day19;
 mod day20;
+mod day21;
 mod utils;
 
 fn run() -> Result<(), utils::ParseError> {
-  day20::problem1()?;
-  day20::problem2()?;
+  day21::problem1()?;
+  day21::problem2()?;
 
   Ok(())
 }
