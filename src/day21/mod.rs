@@ -89,20 +89,43 @@ pub fn problem1() -> Result<(), ParseError> {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input()?;
+    let food = parse_input()?;
+    let (allergen_to_food_map, _) = map_allergens_to_food(&food);
+
+    let mut a_to_i = allergen_to_food_map.iter()
+        .map(|(a, is)| (a, is.clone()))
+        .collect::<Vec<_>>();
+    a_to_i.sort_by(|a, b| a.1.len().cmp(&b.1.len()));
+
+    let mut already_assigned: HashSet<&str> = HashSet::new();
+    let mut max = 2;
+    while max > 1 {
+        for i in 0..a_to_i.len() {
+            if a_to_i[i].1.len() == 1 {
+                already_assigned.insert(a_to_i[i].1.iter().next().unwrap());
+                continue;
+            }
+
+            for a in &already_assigned {
+                a_to_i[i].1.remove(a);
+            }
+
+            if a_to_i[i].1.len() > 1 {
+                continue;
+            }
+
+            already_assigned.insert(a_to_i[i].1.iter().next().unwrap());
+        }
+
+        max = a_to_i.iter().map(|v| v.1.len()).max().unwrap();
+    }
+
+    a_to_i.sort_by(|a, b| a.0.cmp(&b.0));
+    print!("21/2: Canonical dangerous ingredient list: ");
+    for i in a_to_i {
+        print!("{},", i.1.iter().next().unwrap());
+    }
+    println!("");
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
