@@ -1,5 +1,4 @@
 use std::collections::VecDeque;
-use itertools::join;
 use super::utils::ParseError;
 
 type Deck = VecDeque<u64>;
@@ -26,17 +25,9 @@ fn parse_input() -> Vec<Deck> {
         .collect::<Vec<_>>()
 }
 
-fn checksum(d: &Deck) -> String {
-    join(d.iter(), ",")
-}
-
 fn game_state_existed_before(previous_games: &Vec<Game>, current: &Game) -> bool {
-    let c1 = checksum(&current.player[0]);
-    let c2 = checksum(&current.player[1]);
-
     previous_games.iter()
-        .map(|g| (checksum(&g.player[0]), checksum(&g.player[1])))
-        .any(|(p1, p2)| p1 == c1 && p2 == c2)
+        .any(|g| g.player[0] == current.player[0] && g.player[1] == current.player[1])
 }
 
 fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: usize) -> Game {
