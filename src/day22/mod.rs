@@ -3,6 +3,7 @@ use super::utils::ParseError;
 
 type Deck = VecDeque<u64>;
 
+#[derive(Clone)]
 struct Game {
     player: Vec<Deck>,
     winner: Option<usize>,
@@ -24,7 +25,7 @@ fn parse_input() -> Vec<Deck> {
         .collect::<Vec<_>>()
 }
 
-fn turn(mut game: Game, recurse: bool) -> Game {
+fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
     let t1 = game.player[0].pop_front();
     let t2 = game.player[1].pop_front();
 
@@ -42,11 +43,21 @@ fn turn(mut game: Game, recurse: bool) -> Game {
 
     let t1 = t1.unwrap();
     let t2 = t2.unwrap();
+    let mut winner = 0;
 
     // determine sub game
-    // todo
+    if recurse && t1 >= game.player[0].len() as u64 && t2 >= game.player[1].len() as u64 {
+        previous_games.push(game.clone());
+        let rg = play_game(game.clone(), previous_games, recurse);
+        winner = rg.winner.unwrap();
+        previous_games.pop();
+    } else {
+        if t2 > t1 {
+            winner = 1;
+        }
+    }
 
-    if t1 > t2 {
+    if winner == 0 {
         game.player[0].push_back(t1);
         game.player[0].push_back(t2);
     } else {
@@ -55,6 +66,15 @@ fn turn(mut game: Game, recurse: bool) -> Game {
     }
 
     return game;
+}
+
+fn play_game(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
+    loop {
+        game = turn(game, previous_games, recurse);
+        if game.winner.is_some() {
+            return game;
+        }
+    }
 }
 
 fn print_decks(players: &Vec<Deck>) {
@@ -68,7 +88,7 @@ pub fn problem1() -> Result<(), ParseError> {
     let mut game = Game { player: decks, winner: None };
 
     loop {
-        game = turn(game, false);
+        game = turn(game, &mut vec![], false);
         if game.winner.is_some() {
             break;
         }
@@ -89,12 +109,7 @@ pub fn problem2() -> Result<(), ParseError> {
     let decks = parse_input();
     let mut game = Game { player: decks, winner: None };
 
-    loop {
-        game = turn(game, true);
-        if game.winner.is_some() {
-            break;
-        }
-    }
+    game = play_game(game, &mut vec![], true);
 
     let winner = game.winner.unwrap();
     let score: u64 = game.player[winner].iter().rev().enumerate()
@@ -105,17 +120,4 @@ pub fn problem2() -> Result<(), ParseError> {
     println!("22/2: score of winner's deck: {}", score);
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
