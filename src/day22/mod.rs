@@ -31,11 +31,6 @@ fn game_state_existed_before(previous_games: &Vec<Game>, current: &Game) -> bool
 }
 
 fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: usize) -> Game {
-    // println!("");
-    // println!("-- Round {} (Game {}) --", previous_turns.len() + 1, level);
-    // println!("Player 1's deck: {:?}", game.player[0]);
-    // println!("Player 2's deck: {:?}", game.player[1]);
-
     if game_state_existed_before(&previous_turns, &game) {
         game.winner = Some(0);
         return game;
@@ -60,13 +55,8 @@ fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: us
     let t2 = t2.unwrap();
     let mut winner = 0;
 
-    // println!("Player 1 plays: {}", t1);
-    // println!("Player 2 plays: {}", t2);
-
     // determine sub game
     if recurse && t1 <= game.player[0].len() as u64 && t2 <= game.player[1].len() as u64 {
-        // println!("Playing a sub-game to determine the winner...");
-        // println!("");
         let mut ng = game.clone();
         ng.player[0] = ng.player[0].iter().take(t1 as usize).cloned().collect::<VecDeque<_>>();
         ng.player[1] = ng.player[1].iter().take(t2 as usize).cloned().collect::<VecDeque<_>>();
@@ -78,7 +68,6 @@ fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: us
         }
     }
 
-    // println!("Player {} wins round {} of game {}!", winner + 1, previous_turns.len() + 1, level);
     if winner == 0 {
         game.player[0].push_back(t1);
         game.player[0].push_back(t2);
@@ -91,7 +80,6 @@ fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: us
 }
 
 fn play_game(mut game: Game, recurse: bool, level: usize) -> Game {
-    // println!("=== Game {} ===", level);
     let mut pg = vec![];
     loop {
         let next_game = turn(game.clone(), &mut pg, recurse, level);
@@ -100,12 +88,6 @@ fn play_game(mut game: Game, recurse: bool, level: usize) -> Game {
         if game.winner.is_some() {
             return game;
         }
-    }
-}
-
-fn print_decks(players: &Vec<Deck>) {
-    for (i, p) in players.iter().enumerate() {
-        println!("Player {}: {:?}", i, p);
     }
 }
 
