@@ -3,6 +3,11 @@ use super::utils::ParseError;
 
 type Deck = VecDeque<u64>;
 
+struct Game {
+    player: Vec<Deck>,
+    winner: Option<usize>,
+}
+
 fn parse_deck(s: &str) -> Deck {
     s.lines()
         .skip(1)
@@ -19,34 +24,37 @@ fn parse_input() -> Vec<Deck> {
         .collect::<Vec<_>>()
 }
 
-fn turn(players: Vec<Deck>) -> Result<Vec<Deck>, ParseError> {
-    let mut tops = vec![];
-    let mut players = players;
-    for p in &mut players {
-        let v = p.pop_front();
-        tops.push(v);
+fn turn(mut game: Game, recurse: bool) -> Game {
+    let t1 = game.player[0].pop_front();
+    let t2 = game.player[1].pop_front();
+
+    if t1.is_none() {
+        game.player[1].push_front(t2.unwrap());
+        game.winner = Some(1);
+        return game;
     }
 
-    let top = tops.iter()
-        .enumerate()
-        .filter_map(|(i, v)| if v.is_some() {
-            Some((i, v.unwrap()))
-        } else {
-            None
-        })
-        .max_by(|a, b| a.1.cmp(&b.1))
-        .ok_or(ParseError::new("No player has cards left"))?;
-
-    let top_player = top.0;
-    let mut tops_sorted = tops.into_iter().filter_map(|v| v).collect::<Vec<_>>();
-    tops_sorted.sort_by(|a, b| b.cmp(&a));
-
-    let mut players = players;
-    for t in tops_sorted {
-        players[top_player].push_back(t);
+    if t2.is_none() {
+        game.player[0].push_front(t1.unwrap());
+        game.winner = Some(0);
+        return game;
     }
 
-    Ok(players)
+    let t1 = t1.unwrap();
+    let t2 = t2.unwrap();
+
+    // determine sub game
+    // todo
+
+    if t1 > t2 {
+        game.player[0].push_back(t1);
+        game.player[0].push_back(t2);
+    } else {
+        game.player[1].push_back(t2);
+        game.player[1].push_back(t1);
+    }
+
+    return game;
 }
 
 fn print_decks(players: &Vec<Deck>) {
@@ -56,17 +64,18 @@ fn print_decks(players: &Vec<Deck>) {
 }
 
 pub fn problem1() -> Result<(), ParseError> {
-    let mut decks = parse_input();
+    let decks = parse_input();
+    let mut game = Game { player: decks, winner: None };
 
     loop {
-        decks = turn(decks)?;
-        if decks.iter().any(|v| v.is_empty()) {
+        game = turn(game, false);
+        if game.winner.is_some() {
             break;
         }
     }
 
-    let winner = decks.iter().find(|d| !d.is_empty()).unwrap();
-    let score: u64 = winner.iter().rev().enumerate()
+    let winner = game.winner.unwrap();
+    let score: u64 = game.player[winner].iter().rev().enumerate()
         .map(|(i, v)| (i + 1, v))
         .map(|(i, v)| (i as u64) * v)
         .sum();
@@ -77,7 +86,23 @@ pub fn problem1() -> Result<(), ParseError> {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let input = parse_input();
+    let decks = parse_input();
+    let mut game = Game { player: decks, winner: None };
+
+    loop {
+        game = turn(game, true);
+        if game.winner.is_some() {
+            break;
+        }
+    }
+
+    let winner = game.winner.unwrap();
+    let score: u64 = game.player[winner].iter().rev().enumerate()
+        .map(|(i, v)| (i + 1, v))
+        .map(|(i, v)| (i as u64) * v)
+        .sum();
+
+    println!("22/2: score of winner's deck: {}", score);
 
     Ok(())
 }
