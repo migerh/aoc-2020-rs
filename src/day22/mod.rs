@@ -26,6 +26,9 @@ fn parse_input() -> Vec<Deck> {
 }
 
 fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
+    println!("Player 1's deck: {:?}", game.player[0]);
+    println!("Player 2's deck: {:?}", game.player[1]);
+
     let t1 = game.player[0].pop_front();
     let t2 = game.player[1].pop_front();
 
@@ -45,8 +48,11 @@ fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
     let t2 = t2.unwrap();
     let mut winner = 0;
 
+    println!("Player 1 plays: {}", t1);
+    println!("Player 2 plays: {}", t2);
+
     // determine sub game
-    if recurse && t1 >= game.player[0].len() as u64 && t2 >= game.player[1].len() as u64 {
+    if recurse && t1 <= game.player[0].len() as u64 && t2 <= game.player[1].len() as u64 {
         previous_games.push(game.clone());
         let rg = play_game(game.clone(), previous_games, recurse);
         winner = rg.winner.unwrap();
@@ -69,7 +75,10 @@ fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
 }
 
 fn play_game(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
+    let mut round = 0;
     loop {
+        round += 1;
+        println!("-- Round {} (Game {}) --", round, previous_games.len() + 1);
         game = turn(game, previous_games, recurse);
         if game.winner.is_some() {
             return game;
