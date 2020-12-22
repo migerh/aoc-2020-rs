@@ -31,7 +31,7 @@ mod day22;
 mod utils;
 
 fn run() -> Result<(), utils::ParseError> {
-  day22::problem1()?;
+//   day22::problem1()?;
   day22::problem2()?;
 
   Ok(())

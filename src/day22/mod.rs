@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use itertools::join;
 use super::utils::ParseError;
 
 type Deck = VecDeque<u64>;
@@ -17,7 +18,7 @@ fn parse_deck(s: &str) -> Deck {
 }
 
 fn parse_input() -> Vec<Deck> {
-    let input = include_str!("./data/example.txt");
+    let input = include_str!("./data/input.txt");
     input
         .split("\n\n")
         .filter(|v| *v != "")
@@ -25,9 +26,29 @@ fn parse_input() -> Vec<Deck> {
         .collect::<Vec<_>>()
 }
 
-fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
-    println!("Player 1's deck: {:?}", game.player[0]);
-    println!("Player 2's deck: {:?}", game.player[1]);
+fn checksum(d: &Deck) -> String {
+    join(d.iter(), ",")
+}
+
+fn game_state_existed_before(previous_games: &Vec<Game>, current: &Game) -> bool {
+    let c1 = checksum(&current.player[0]);
+    let c2 = checksum(&current.player[1]);
+
+    previous_games.iter()
+        .map(|g| (checksum(&g.player[0]), checksum(&g.player[1])))
+        .any(|(p1, p2)| p1 == c1 && p2 == c2)
+}
+
+fn turn(mut game: Game, previous_turns: &mut Vec<Game>, recurse: bool, level: usize) -> Game {
+    // println!("");
+    // println!("-- Round {} (Game {}) --", previous_turns.len() + 1, level);
+    // println!("Player 1's deck: {:?}", game.player[0]);
+    // println!("Player 2's deck: {:?}", game.player[1]);
+
+    if game_state_existed_before(&previous_turns, &game) {
+        game.winner = Some(0);
+        return game;
+    }
 
     let t1 = game.player[0].pop_front();
     let t2 = game.player[1].pop_front();
@@ -48,21 +69,25 @@ fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
     let t2 = t2.unwrap();
     let mut winner = 0;
 
-    println!("Player 1 plays: {}", t1);
-    println!("Player 2 plays: {}", t2);
+    // println!("Player 1 plays: {}", t1);
+    // println!("Player 2 plays: {}", t2);
 
     // determine sub game
     if recurse && t1 <= game.player[0].len() as u64 && t2 <= game.player[1].len() as u64 {
-        previous_games.push(game.clone());
-        let rg = play_game(game.clone(), previous_games, recurse);
+        // println!("Playing a sub-game to determine the winner...");
+        // println!("");
+        let mut ng = game.clone();
+        ng.player[0] = ng.player[0].iter().take(t1 as usize).cloned().collect::<VecDeque<_>>();
+        ng.player[1] = ng.player[1].iter().take(t2 as usize).cloned().collect::<VecDeque<_>>();
+        let rg = play_game(ng, recurse, level + 1);
         winner = rg.winner.unwrap();
-        previous_games.pop();
     } else {
         if t2 > t1 {
             winner = 1;
         }
     }
 
+    // println!("Player {} wins round {} of game {}!", winner + 1, previous_turns.len() + 1, level);
     if winner == 0 {
         game.player[0].push_back(t1);
         game.player[0].push_back(t2);
@@ -74,12 +99,13 @@ fn turn(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
     return game;
 }
 
-fn play_game(mut game: Game, previous_games: &mut Vec<Game>, recurse: bool) -> Game {
-    let mut round = 0;
+fn play_game(mut game: Game, recurse: bool, level: usize) -> Game {
+    // println!("=== Game {} ===", level);
+    let mut pg = vec![];
     loop {
-        round += 1;
-        println!("-- Round {} (Game {}) --", round, previous_games.len() + 1);
-        game = turn(game, previous_games, recurse);
+        let next_game = turn(game.clone(), &mut pg, recurse, level);
+        pg.push(game);
+        game = next_game;
         if game.winner.is_some() {
             return game;
         }
@@ -97,7 +123,7 @@ pub fn problem1() -> Result<(), ParseError> {
     let mut game = Game { player: decks, winner: None };
 
     loop {
-        game = turn(game, &mut vec![], false);
+        game = turn(game, &mut vec![], false, 1);
         if game.winner.is_some() {
             break;
         }
@@ -118,7 +144,7 @@ pub fn problem2() -> Result<(), ParseError> {
     let decks = parse_input();
     let mut game = Game { player: decks, winner: None };
 
-    game = play_game(game, &mut vec![], true);
+    game = play_game(game, true, 1);
 
     let winner = game.winner.unwrap();
     let score: u64 = game.player[winner].iter().rev().enumerate()
