@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use itertools::join;
+use indicatif::ProgressBar;
 use super::utils::ParseError;
 
 fn get_input() -> Vec<usize> {
@@ -94,7 +95,7 @@ pub fn problem1() -> Result<(), ParseError> {
     let cups = input_to_map(&input);
     let mut state = State { current: input[0], max: 9, map: cups };
 
-    for t in 0..100 {
+    for _ in 0..100 {
         turn(&mut state);
     }
 
@@ -114,12 +115,15 @@ pub fn problem2() -> Result<(), ParseError> {
     let map = input_to_map(&cups);
     let mut state = State { current: cups[0], max: 1_000_000, map };
 
-    for t in 0..10_000_000 {
-        if t % 1_000_000 == 0 {
-            println!("{}%", t / 100_000);
+    let iterations = 10_000_000;
+    let pb = ProgressBar::new(iterations);
+    for t in 0..iterations {
+        if t % 100_000 == 0 {
+            pb.inc(100_000);
         }
         turn(&mut state);
     }
+    pb.finish_and_clear();
 
     let star1 = state.map[&1];
     let star2 = state.map[&star1];
