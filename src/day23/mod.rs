@@ -58,13 +58,10 @@ fn turn(state: &mut State) {
     let second = state.map[&first];
     let third = state.map[&second];
 
-    println!("pick up: {}, {}, {}", first, second, third);
-
     let mut destination = get_destination(state.max, state.current);
     while first == destination || second == destination || third == destination {
         destination = get_destination(state.max, destination);
     }
-    println!("destination: {}", destination);
 
     let after_destination = state.map[&destination];
     let after_third = state.map[&third];
@@ -98,55 +95,35 @@ pub fn problem1() -> Result<(), ParseError> {
     let mut state = State { current: input[0], max: 9, map: cups };
 
     for t in 0..100 {
-        println!("--- move {} ---", t + 1);
-        print!("cups: ");
-        state.print();
         turn(&mut state);
-        println!("");
     }
 
-    println!("result: {}", checksum(&state));
+    println!("23/1: order of cups starting with 1 except 1: {}", checksum(&state));
 
     Ok(())
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    // let mut cups = (1..=1_000_000).collect::<VecDeque<u64>>();
-    // let first_10 = get_input();
+    let mut cups = (1..=1_000_000).collect::<Vec<usize>>();
+    let first_10 = get_input();
 
-    // for (i, v) in first_10.into_iter().enumerate() {
-    //     cups[i] = v;
-    // }
+    for (i, v) in first_10.into_iter().enumerate() {
+        cups[i] = v;
+    }
 
-    // for t in 0..10_000_000 {
-    // // for t in 0..10 {
-    //     if t % 10_000 == 0 {
-    //         println!("move {}", t);
-    //     }
-    //     // println!("--- move {} ---", t + 1);
-    //     // println!("cups: {:?}", cups);
-    //     turn(&mut cups);
-    //     // println!("");
-    // }
-    // rotate_to_1(&mut cups);
+    let map = input_to_map(&cups);
+    let mut state = State { current: cups[0], max: 1_000_000, map };
 
-    // let star1 = cups[1];
-    // let star2 = cups[2];
+    for t in 0..10_000_000 {
+        if t % 1_000_000 == 0 {
+            println!("{}%", t / 100_000);
+        }
+        turn(&mut state);
+    }
 
-    // println!("result: {}", star1 * star2);
+    let star1 = state.map[&1];
+    let star2 = state.map[&star1];
+    println!("23/2: product of the two cups the two stars are under: {}", star1 * star2);
 
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
