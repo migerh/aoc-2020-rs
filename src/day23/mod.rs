@@ -83,7 +83,7 @@ fn checksum(state: &State) -> String {
     let mut result = vec![];
     let mut previous = 1;
 
-    for i in 1..9 {
+    for _ in 1..9 {
         previous = state.map[&previous];
         result.push(previous);
     }
