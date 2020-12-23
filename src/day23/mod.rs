@@ -53,17 +53,21 @@ fn rotate_to_new_current(cups: &mut VecDeque<u64>, current: u64) {
 fn turn(cups: &mut VecDeque<u64>) {
     let current = cups[0];
     let three = pick_three(cups);
-    println!("pick up: {:?}", three);
+    // println!("pick up: {:?}", three);
     rotate_to_destination(cups);
-    println!("destination: {}", cups[0]);
+    // println!("destination: {}", cups[0]);
     push_three(cups, &three);
     rotate_to_new_current(cups, current);
 }
 
-fn checksum(cups: &mut VecDeque<u64>) -> String {
+fn rotate_to_1(cups: &mut VecDeque<u64>) {
     while cups[0] != 1 {
         cups.rotate_left(1);
     }
+}
+
+fn checksum(cups: &mut VecDeque<u64>) -> String {
+    rotate_to_1(cups);
     join(cups.iter().skip(1), "")
 }
 
@@ -83,7 +87,28 @@ pub fn problem1() -> Result<(), ParseError> {
 }
 
 pub fn problem2() -> Result<(), ParseError> {
-    let cups = get_input();
+    let mut cups = (1..=1_000_000).collect::<VecDeque<u64>>();
+    let first_10 = get_input();
+
+    for (i, v) in first_10.into_iter().enumerate() {
+        cups[i] = v;
+    }
+
+    for t in 0..10_000_000 {
+        if t % 10_000 == 0 {
+            println!("move {}", t);
+        }
+        // println!("--- move {} ---", t + 1);
+        // println!("cups: {:?}", cups);
+        turn(&mut cups);
+        // println!("");
+    }
+    rotate_to_1(&mut cups);
+
+    let star1 = cups[1];
+    let star2 = cups[2];
+
+    println!("result: {}", star1 * star2);
 
     Ok(())
 }
