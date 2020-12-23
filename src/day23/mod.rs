@@ -12,14 +12,14 @@ fn get_example() -> VecDeque<u64> {
 
 fn pick_three(cups: &mut VecDeque<u64>) -> Vec<u64> {
     let first = cups.pop_front().unwrap();
-    let three = vec![
-        cups.pop_front().unwrap(),
-        cups.pop_front().unwrap(),
-        cups.pop_front().unwrap()
+    let mut three = vec![
+        // cups.pop_front().unwrap(),
+        // cups.pop_front().unwrap(),
+        // cups.pop_front().unwrap()
     ];
-    // for _ in 0..3 {
-    //     three.push(cups.pop_front().unwrap());
-    // }
+    for _ in 0..3 {
+        three.push(cups.pop_front().unwrap());
+    }
     cups.push_front(first);
     three
 }
@@ -42,12 +42,12 @@ fn insert_three(cups: &mut VecDeque<u64>, max: u64, three: &Vec<u64>) {
     // println!("destination: {}", destination);
 
     let destination_position = cups.iter().position(|v| *v == destination).unwrap();
-    cups.insert(destination_position + 1, three[2]);
-    cups.insert(destination_position + 1, three[1]);
-    cups.insert(destination_position + 1, three[0]);
-    // for t in three.iter().rev() {
-    //     cups.insert(destination_position + 1, *t);
-    // }
+    // cups.insert(destination_position + 1, three[2]);
+    // cups.insert(destination_position + 1, three[1]);
+    // cups.insert(destination_position + 1, three[0]);
+    for t in three.iter().rev() {
+        cups.insert(destination_position + 1, *t);
+    }
 }
 
 fn rotate_to_new_current(cups: &mut VecDeque<u64>, current: u64) {
