@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::ops::Add;
+use indicatif::ProgressBar;
 use super::utils::ParseError;
 
 #[derive(Debug)]
@@ -60,7 +61,7 @@ fn parse_input() -> Vec<Vec<Direction>> {
         .collect::<Vec<_>>()
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Coords {
     x: i64,
     y: i64,
@@ -87,6 +88,10 @@ impl Coords {
         };
 
         Self { x, y, z }
+    }
+
+    pub fn abs(&self) -> u64 {
+        (self.x.abs() + self.y.abs() + self.z.abs()) as u64
     }
 }
 
@@ -130,21 +135,83 @@ pub fn problem1() -> Result<(), ParseError> {
     Ok(())
 }
 
+// Create a floor big enough for part 2
+fn initialize_floor() -> HashMap<Coords, bool> {
+    let mut floor: HashMap<Coords, bool> = HashMap::new();
+
+    let directions = parse_line("neeseswwnw");
+    floor.entry(Coords::zeroes()).or_insert(false);
+    for _ in 0..125 {
+        let mut to_add = vec![];
+        for (c, _) in &floor {
+            for d in &directions {
+                let a = Coords::from_direction(&d);
+                to_add.push(*c + a);
+            }
+        }
+        for c in to_add {
+            floor.entry(c).or_insert(false);
+        }
+    }
+
+    floor
+}
+
+fn count_black_neighbors(tile: &Coords, floor: &HashMap<Coords, bool>, ndirections: &Vec<Coords>) -> u64 {
+    let mut count = 0;
+    for d in ndirections {
+        if let Some(v) = floor.get(&(*tile + *d)) {
+            if *v {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+fn tick(floor: HashMap<Coords, bool>) -> HashMap<Coords, bool> {
+    let mut new = floor.clone();
+    let ndirections = parse_line("neeseswwnw").into_iter()
+        .map(|d| Coords::from_direction(&d))
+        .collect::<Vec<_>>();
+
+    for (tile, black) in &floor {
+        let count = count_black_neighbors(&tile, &floor, &ndirections);
+
+        if *black && (count == 0 || count > 2) {
+            new.entry(*tile).and_modify(|v| *v = false);
+        }
+
+        if !*black && count == 2 {
+            new.entry(*tile).and_modify(|v| *v = true);
+        }
+    }
+
+    new
+}
+
 pub fn problem2() -> Result<(), ParseError> {
     let input = parse_input();
 
+    let mut floor = initialize_floor();
+    for tile in input.iter() {
+        let coords = get_tile(tile);
+        floor.entry(coords)
+            .and_modify(|v| *v = !*v)
+            .or_insert(true);
+    }
+
+    let pb = ProgressBar::new(100);
+    for _ in 0..100 {
+        pb.inc(1);
+        floor = tick(floor);
+    }
+    pb.finish_and_clear();
+
+    let result = floor.iter()
+        .filter(|(_, v)| **v)
+        .count();
+
+    println!("24/2: # of flipped tiles: {}", result);
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    pub fn example_1_1() {
-    }
-
-    #[test]
-    pub fn example_2_1() {
-    }
 }
